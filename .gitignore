@@ -1,0 +1,10 @@
+.venv/
+models/
+tools/
+recordings/
+transcripts/
+llama-server.log
+__pycache__/
+voices*.json
+credentials.json
+token.json
