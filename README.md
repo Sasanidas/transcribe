@@ -7,7 +7,7 @@ optionally, a Google Doc.
 ```
 [00:03:12.4] Speaker 1 (ja 0.98, lag 0.71s): 金曜日のリリースは難しいかもしれません
               -> A release on Friday might be difficult.
-[00:03:15.0] Freyja (en 0.99, lag 0.62s): OK, let's move it to Monday then.
+[00:03:15.0] FMF (en 0.99, lag 0.62s): OK, let's move it to Monday then.
 ```
 
 - **Real time, one sentence at a time:** a line appears about 1 s after the speaker pauses.
@@ -492,8 +492,8 @@ recordings/       raw recordings (git-ignored)
 ---
 
 ## Licenses of models and tools
-This project's code has no license file yet. Check each component's license before any
-**commercial** use:
+This project's code is released under the [MIT License](LICENSE). The models and tools it
+downloads have their own licenses; check each one before any **commercial** use:
 
 - **PLaMo-3-translate:** *PLaMo Community License*. Free for personal and non-commercial use;
   commercial use has separate terms. See the

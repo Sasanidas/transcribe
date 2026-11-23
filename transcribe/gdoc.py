@@ -202,7 +202,7 @@ def main() -> None:
     if args.test:
         w = DocWriter(docs_service(), title="Transcriber test")
         w.add(DocLine("00:00:05", "Speaker 1", "Thanks for your time, everyone.", "皆さんお疲れ様です"))
-        w.add(DocLine("00:00:09", "Freyja", "Sounds good, let's start.", None))
+        w.add(DocLine("00:00:09", "FMF", "Sounds good, let's start.", None))
         w.add(DocLine("00:00:14", "Speaker 2", "Testing isn't finished yet, so Friday may be difficult.",
                       "まだテストが終わっていないので金曜日のリリースは難しいかもしれません"))
         w.flush()
