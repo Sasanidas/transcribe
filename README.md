@@ -35,8 +35,7 @@ Ubuntu with PipeWire, and Python 3.12.
   - [4. Speech recognition](#4-speech-recognition)
   - [5. Translation](#5-translation)
   - [6. Speaker identification](#6-speaker-identification)
-  - [7. Firefox add-on](#7-firefox-add-on)
-  - [8. Outputs](#8-outputs)
+  - [7. Outputs](#7-outputs)
   - [Threads and timing](#threads-and-timing)
 - [Resource use and latency](#resource-use-and-latency)
 - [Benchmarks](#benchmarks)
@@ -98,8 +97,11 @@ Type a command in the terminal and press Enter:
 
 | Option | Default | Purpose |
 |---|---|---|
-| `--name NAME` | Meet name from the add-on, else `You` | Label for your mic |
+| `--name NAME` | `You` | Label for your mic (can also be set during the call with `me=`) |
 | `--voices FILE` | off | Load/save named voiceprints so regular people are recognised by name |
+| `--voice-threshold X` | `0.55` | Cosine similarity needed to match a known voice |
+| `--no-voice-id` | off | Don't tell meeting voices apart; label all meeting audio with `--others` |
+| `--others LABEL` | `Others` | Label for meeting audio when no voice is identified |
 | `--glossary FILE` | none | Fixed translations, one `源語 => translation` per line |
 | `--doc` / `--doc-id ID` | off | Also write to a new or existing Google Doc ([setup](docs/google-docs-setup.md)) |
 | `--doc-title TITLE` | date/time | Title of the transcript (Markdown and Google Doc) |
@@ -107,17 +109,15 @@ Type a command in the terminal and press Enter:
 | `--ja-engine reazon\|kotoba` | `reazon` | Japanese recogniser: ReazonSpeech (CPU) or kotoba-whisper (GPU) |
 | `--languages en,ja` | `en,ja` | Languages the router chooses between |
 | `--min-silence SEC` | `0.5` | Pause that ends a sentence (longer = fewer split sentences, more delay) |
-| `--voice-threshold X` | `0.55` | Cosine similarity needed to match a known voice |
 | `--mic SRC` / `--system SRC` | system defaults | Audio devices (`python -m transcribe.record --list`) |
 | `--files mic=a.wav system=b.wav` | live capture | Replay recordings instead of live audio (`--fast` = no real-time pacing) |
-| `--meet-hints` | off | Also use Meet tile/caption names from the add-on to name voices |
-| `--no-speakers` | off | Don't listen for the Firefox add-on |
-| `--debug-speakers` | off | Print what the add-on sees |
+| `--out DIR` | `transcripts` | Where the Markdown/JSONL transcripts go |
 | `--llm FILE` | PLaMo 2B | GGUF translation model |
 
 ### Other tools
 ```bash
-uv run python -m transcribe.record              # record mic + meeting audio to recordings/<date>/
+uv run python -m transcribe.record              # record mic + meeting audio to recordings/<date>/{mic,system}.wav
+uv run python -m transcribe.record --duration 10  # record 10 s, then stop
 uv run python -m transcribe.record --list       # list audio devices
 uv run python -m transcribe.gdoc --login        # one-time Google login (for --doc)
 uv run python -m transcribe.gdoc --test         # create a test Google Doc
@@ -160,7 +160,6 @@ uv run python -m transcribe.gdoc --test         # create a test Google Doc
 | Other languages | Whisper large-v3-turbo (faster-whisper) | GPU | `transcribe/asr.py` |
 | Translation | PLaMo-3-translate 2B (GGUF Q4_K_M) on llama.cpp `llama-server` | GPU | `transcribe/translate.py` |
 | Speaker ID | 3D-Speaker CAM++ embeddings (sherpa-onnx) + online clustering | CPU | `transcribe/voices.py` |
-| Meet integration | Firefox WebExtension (MV2) + local HTTP endpoint | browser | `extension/firefox/`, `transcribe/speakers.py` |
 | Outputs | Markdown, JSONL, Google Docs API | – | `transcribe/mdlog.py`, `transcribe/gdoc.py`, `transcribe/live.py` |
 
 ### 1. Audio capture
@@ -282,8 +281,8 @@ reverse, so the pipeline waits for the pause that ends the sentence.
 ### 6. Speaker identification
 `transcribe/voices.py`
 
-- **Your lines:** everything on the mic stream is you. The label comes from `--name`, `me=`, or
-  the Meet name the Firefox add-on reports, else `You`.
+- **Your lines:** everything on the mic stream is you. The label comes from `--name` or the `me=`
+  command, else `You`.
 - **Everyone else:** told apart by voice.
   - **Embeddings:** **3D-Speaker CAM++** (`campplus_sv_zh_en_16k-common_advanced`, trained on
     Chinese and English, 28 MB) through sherpa-onnx's `SpeakerEmbeddingExtractor`. It produces a
@@ -302,43 +301,10 @@ reverse, so the pipeline waits for the pause that ends the sentence.
 - **Why CAM++:** on 24 labelled clips from 8 speakers it identified 24/24 correctly with a clear
   margin. TitaNet-small also got 24/24 but with a smaller margin; WeSpeaker ResNet34 got 22/24.
   Voice embeddings are largely language-independent.
-- **Optional, `--meet-hints`:** names from the Firefox add-on (Meet's highlighted tile or captions)
-  count as **votes** for a voice, and a voice shows its majority name. This is off by default
-  because Meet captions turned out to be unreliable.
+- **Nothing from Meet is used.** Names come only from voice, renames and the voices file, so the
+  approach works the same for any meeting app.
 
-### 7. Firefox add-on
-`extension/firefox/` (WebExtension, Manifest V2) + `transcribe/speakers.py`
-
-- **What it's for now:** mainly reporting **your Meet display name** for your own lines. Speaker
-  hints for others are only used with `--meet-hints`.
-- **`content.js`** (runs on `meet.google.com`), checked every 200 ms:
-  - **Tiles:** participant tiles are found by `[data-participant-id]`. A tile counts as "speaking"
-    when a `MutationObserver` sees at least 3 class/style/child changes inside it within 600 ms,
-    which catches Meet's speaking animation without depending on Meet's generated class names.
-    The name is read from the tile's first plausible text.
-  - **Captions** (if on): the caption panel `div[role="region"][tabindex="0"]`; each block is
-    name + growing text. This is the same approach as the MIT-licensed
-    [TranscripTonic](https://github.com/bpetrynski/transcriptonic).
-  - **Your name:** read from the pre-join screen, the Google account button ("Google Account:
-    Name", email discarded) or the People panel ("Name (You)" / 「名前（あなた）」). It is stored
-    in `browser.storage.local`, so it is only needed once.
-  - **Only names and timestamps leave the page,** never caption text.
-- **`background.js`** forwards the add-on's messages with `POST http://127.0.0.1:8765/events`.
-- **`speakers.py`** runs a small `ThreadingHTTPServer` on 127.0.0.1:8765.
-  - **Who it accepts:** only JSON (`Content-Type: application/json`) from extension origins
-    (`moz-extension://` / `chrome-extension://`). Ordinary web pages can't send that without a
-    CORS preflight, which the server never answers, so they're rejected.
-  - **Hint windows:** tile hints are matched to a segment over `[start, end + 0.4 s]`, captions
-    over `[start, end + 1.2 s]` (captions lag the audio). With `--meet-hints` the app waits for
-    that window before labelling.
-  - **Your own name** is never used as a hint for someone else.
-- **Install:** `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on…** →
-  `extension/firefox/manifest.json`. A temporary add-on is removed, along with its storage, when
-  Firefox restarts. To keep it permanently, sign it as *unlisted* through addons.mozilla.org
-  (free, private, but uploads the code to Mozilla), or use Firefox Developer Edition.
-- **Caveat:** Meet's page structure is undocumented and changes, so the selectors may need updating.
-
-### 8. Outputs
+### 7. Outputs
 
 **Terminal:** one line per segment: time, speaker, detected language and confidence, lag (or
 processing times with `--fast`), the original text, and `->` with the translation.
@@ -380,7 +346,7 @@ processing times with `--fast`), the original text, and `->` with the translatio
   ordered.
 - **Command thread** reads `2=Tanaka`, `me=…` and `list` from stdin.
 - **Google Doc thread** flushes the queue every 3 s.
-- **llama-server** (separate process) and **add-on HTTP server** (thread).
+- **llama-server** runs as a separate process.
 
 Startup takes about 4–5 s (the models load while llama-server starts). On Ctrl-C the remaining
 audio is flushed through the VAD, the queue is drained, voiceprints are saved and llama-server is
@@ -463,12 +429,10 @@ transcribe/
   asr.py          language routing, ReazonSpeech / Whisper recognition
   translate.py    llama-server process + PLaMo translator with history and glossary
   voices.py       CAM++ voiceprints, online clustering, rename/merge, voices file
-  speakers.py     local HTTP endpoint for the Firefox add-on
   mdlog.py        Markdown transcript
   gdoc.py         Google Docs writer + login/test CLI
   record.py       raw audio recorder with level meter
   cuda_libs.py    preloads pip-installed CUDA libraries
-extension/firefox/  Meet Speaker Bridge add-on (manifest, content script, background script)
 bench/            benchmarks, test data, fake Docs API, RESULTS.md
 docs/             google-docs-setup.md
 scripts/          fetch_models.sh
@@ -482,10 +446,9 @@ recordings/       raw recordings (git-ignored)
 
 ## Privacy
 - **Audio, text and voiceprints never leave the machine.** All models run locally; llama-server
-  and the add-on endpoint listen only on 127.0.0.1.
+  listens only on 127.0.0.1.
 - **The only outbound traffic** is the one-time model downloads, and Google Docs writes when you
   use `--doc` (the transcript text then lives in your Google Drive).
-- **The add-on** sends only names and timestamps, and only to 127.0.0.1.
 - **Voiceprints** (`--voices` files) are biometric data. They are stored only where you choose and
   are git-ignored by default (`voices*.json`).
 - **Mute doesn't apply:** the app reads your mic directly, so muting yourself in Meet does **not**
@@ -505,8 +468,8 @@ recordings/       raw recordings (git-ignored)
   a second `Speaker N` (fix with a rename/merge). Not yet validated on Meet's compressed audio.
 - **Only Japanese is translated.** Other languages are written as spoken (PLaMo supports 53
   languages; enabling them is a small change).
-- **The Meet add-on depends on Meet's undocumented page structure.** Captions are unreliable in
-  some meetings, which is why names for others come from voice instead.
+- **Names for others must be set by hand** (`2=Tanaka`) the first time; use `--voices` so they
+  are recognised in later calls.
 - **Not yet tested:** a long multi-person real call end to end, and English-speech routing on real
   meeting audio.
 
@@ -520,8 +483,8 @@ recordings/       raw recordings (git-ignored)
 | Others' words appear as yours | Use headphones (the mic is hearing the speakers) |
 | `libcublas.so.12 … not found` | Run through `uv run` so the venv's CUDA libs are used; re-run `uv sync` |
 | `llama-server exited` | See `llama-server.log`; check the model exists (`./scripts/fetch_models.sh`) and GPU memory is free (`nvidia-smi`) |
-| Address already in use (8765/8090) | Another transcriber instance is running; stop it, or use `--speaker-port` |
-| Your lines say "You" | Start with `--name`, type `me=Your Name`, or open Meet's People panel once with the add-on loaded |
+| Address already in use (8090) | Another transcriber instance (or llama-server) is running; stop it |
+| Your lines say "You" | Start with `--name`, or type `me=Your Name` |
 | Same person shows as two speakers | `3=Tanaka` merges into Tanaka; or lower `--voice-threshold` slightly |
 | Different people merged | Raise `--voice-threshold` (e.g. 0.6) |
 | Google Doc errors | See [docs/google-docs-setup.md](docs/google-docs-setup.md); re-run `python -m transcribe.gdoc --login` |
@@ -538,4 +501,3 @@ This project's code has no license file yet. Check each component's license befo
 - **Whisper / faster-whisper, llama.cpp:** MIT.
 - **ReazonSpeech-k2, kotoba-whisper, Silero VAD, 3D-Speaker CAM++, sherpa-onnx:** see each model
   card or repository.
-- **TranscripTonic** (reference for the Meet caption selectors): MIT.
