@@ -1,0 +1,16 @@
+{"speaker": "Tanaka", "ja": "皆さんお疲れ様です今日はリリーススケジュールについて確認させていただきたいと思います", "ref": "Thanks for your time, everyone. Today I'd like to go over the release schedule."}
+{"speaker": "Sato", "ja": "先週お話ししたログイン画面の改修ですが", "ref": "About the login screen rework we discussed last week,"}
+{"speaker": "Sato", "ja": "まだテストが終わっていないので金曜日のリリースは難しいかもしれません", "ref": "testing isn't finished yet, so a Friday release may be difficult."}
+{"speaker": "Tanaka", "ja": "そうですか何日くらいずれそうですか", "ref": "I see. About how many days do you think it will slip?"}
+{"speaker": "Sato", "ja": "三日から五日くらい見ていただければと思います", "ref": "I'd ask you to allow roughly three to five days."}
+{"speaker": "Tanaka", "ja": "了解ですお客様には私から連絡しておきます", "ref": "Understood. I'll let the client know myself."}
+{"speaker": "Suzuki", "ja": "すみませんちょっといいですか決済のAPIの件なんですけど", "ref": "Sorry, may I cut in? It's about the payment API."}
+{"speaker": "Suzuki", "ja": "先方からまだ仕様書が届いていなくて", "ref": "We still haven't received the specification from them,"}
+{"speaker": "Suzuki", "ja": "このままだと今月中の対応は厳しいです", "ref": "so at this rate, handling it within this month will be tough."}
+{"speaker": "Tanaka", "ja": "それは困りましたね私の方から先方に催促してみます", "ref": "That's a problem. I'll try pressing them for it myself."}
+{"speaker": "Suzuki", "ja": "ありがとうございます助かります", "ref": "Thank you, that really helps."}
+{"speaker": "Tanaka", "ja": "あと予算の件ですが追加で二百万円の申請は一旦見送りになりました", "ref": "Also, about the budget: the request for an additional two million yen has been put on hold for now."}
+{"speaker": "Sato", "ja": "えっそうなんですかじゃあ外注は使えないってことですよね", "ref": "Oh, really? So that means we can't use outsourcing, right?"}
+{"speaker": "Tanaka", "ja": "そうですね前向きに検討はしてもらえるそうですが今期は難しいと思います", "ref": "Right. They said they'd consider it positively, but I think it's unlikely this term."}
+{"speaker": "Sato", "ja": "わかりましたじゃあ社内でなんとかするしかないですね", "ref": "Got it. Then we'll just have to manage it in-house."}
+{"speaker": "Suzuki", "ja": "きのうのしりょうはもうみていただけましたか", "ref": "Have you had a chance to look at yesterday's materials yet?"}
